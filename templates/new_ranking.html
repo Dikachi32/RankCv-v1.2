@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+{% block title %}{% if view_mode %}View Past Ranking{% else %}New Ranking{% endif %} - RankCV{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+    {% if view_mode %}
+    <div class="alert alert-info mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <strong>Viewing Past Session</strong>
+            <p class="mb-0 small">Previously saved ranking from: {{ job }}</p>
+        </div>
+        <a href="{{ url_for('history') }}" class="btn btn-sm btn-outline-secondary">
+            <iconify-icon icon="ph:arrow-left"></iconify-icon> Back to History
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="mb-4">
+        <h1 class="fw-bold" style="font-size:2.5rem;">
+            {% if view_mode %}Past Ranking Results{% else %}Candidate Ranking{% endif %}
+        </h1>
+        <p class="text-muted">
+            {% if view_mode %}
+                Results from a previous session.
+            {% else %}
+                Click any candidate to see their full AI-powered assessment.
+            {% endif %}
+        </p>
+    </div>
+
+    {% if results %}
+
+    <!-- STAT CARDS -->
+    <div class="row mb-4">
+        <div class="col"><div class="stat-card text-center">
+            <div class="stat-number">{{ results|length }}</div>
+            <div class="stat-label">Total</div>
+        </div></div>
+        <div class="col"><div class="stat-card text-center stat-green">
+            <div class="stat-number">{{ results|selectattr("score","ge",90)|list|length }}</div>
+            <div class="stat-label">90–100%</div>
+        </div></div>
+        <div class="col"><div class="stat-card text-center stat-yellow">
+            <div class="stat-number">{{ results|selectattr("score","ge",70)|selectattr("score","lt",90)|list|length }}</div>
+            <div class="stat-label">70–90%</div>
+        </div></div>
+        <div class="col"><div class="stat-card text-center stat-orange">
+            <div class="stat-number">{{ results|selectattr("score","ge",50)|selectattr("score","lt",70)|list|length }}</div>
+            <div class="stat-label">50–70%</div>
+        </div></div>
+        <div class="col"><div class="stat-card text-center stat-red">
+            <div class="stat-number">{{ results|selectattr("score","lt",50)|list|length }}</div>
+            <div class="stat-label">Below 50%</div>
+        </div></div>
+    </div>
+
+    <!-- FILTER TABS -->
+    <div class="filter-tabs mb-3">
+        <button class="filter-tab active" onclick="filterCandidates('all',this)">All</button>
+        <button class="filter-tab" onclick="filterCandidates('90-100',this)">90–100%</button>
+        <button class="filter-tab" onclick="filterCandidates('70-90',this)">70–90%</button>
+        <button class="filter-tab" onclick="filterCandidates('50-70',this)">50–70%</button>
+        <button class="filter-tab" onclick="filterCandidates('below-50',this)">Below 50%</button>
+    </div>
+
+    <div class="results-header mb-3">
+        <span class="result-arrow">Result &rarr;</span>
+        <span class="result-count">{{ results|length }} Candidate{{ 's' if results|length != 1 }} Ranked</span>
+    </div>
+
+    <!-- CANDIDATE LIST -->
+    <div class="card card-custom shadow-sm" id="candidatesList">
+        {% for candidate in results %}
+        <div class="candidate-row row align-items-center py-3 px-4 border-bottom clickable-row"
+             data-score="{{ candidate.score }}"
+             onclick="openCandidateModal({{ loop.index0 }})">
+
+            <div class="col-1">
+                <span class="rank-number">#{{ loop.index }}</span>
+            </div>
+
+            <div class="col-1">
+                {% set display_name = candidate.name if candidate.name and candidate.name != 'Unknown Candidate' else candidate.filename %}
+                <div class="avatar-circle
+                    {% if candidate.score >= 90 %}avatar-green
+                    {% elif candidate.score >= 70 %}avatar-yellow
+                    {% elif candidate.score >= 50 %}avatar-orange
+                    {% else %}avatar-red{% endif %}">
+                    {{ display_name[0]|upper if display_name else '?' }}
+                </div>
+            </div>
+
+            <div class="col-4">
+                <!-- NAME FROM CV CONTENT (not filename) -->
+                <div class="fw-bold">
+                    {{ candidate.name if candidate.name and candidate.name != 'Unknown Candidate' else candidate.filename }}
+                </div>
+                <div class="text-muted small">{{ candidate.filename }}</div>
+            </div>
+
+            <div class="col-4">
+                <div class="progress ranking-progress">
+                    <div class="progress-bar
+                        {% if candidate.score >= 90 %}bg-success
+                        {% elif candidate.score >= 70 %}bg-warning
+                        {% elif candidate.score >= 50 %}bg-orange
+                        {% else %}bg-danger{% endif %}"
+                        style="width:{{ candidate.score }}%;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-2 text-end">
+                <span class="score-badge
+                    {% if candidate.score >= 90 %}text-success
+                    {% elif candidate.score >= 70 %}text-warning
+                    {% elif candidate.score >= 50 %}text-orange
+                    {% else %}text-danger{% endif %}">
+                    {{ candidate.score }}%
+                </span>
+                <div class="view-hint">
+                    <iconify-icon icon="ph:eye" style="font-size:14px;"></iconify-icon>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mt-4 text-center">
+        <a href="{{ url_for('home') }}" class="btn btn-rank px-5">
+            Start New Ranking
+            <iconify-icon icon="ph:arrow-right-bold" class="ms-2"></iconify-icon>
+        </a>
+    </div>
+
+    {% else %}
+    <div class="text-center py-5">
+        <iconify-icon icon="ph:files" style="font-size:60px;color:#CBD5E0;"></iconify-icon>
+        <h4 class="fw-bold text-muted mt-3">No Results Found</h4>
+        <p class="text-muted">This session may have been deleted or the CVs could not be read.</p>
+        <a href="{{ url_for('home') }}" class="btn btn-rank px-4 mt-2">Start a New Ranking</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ================================================================ -->
+<!--  CANDIDATE DETAIL MODAL                                           -->
+<!-- ================================================================ -->
+<div id="candidateModal" class="cv-modal" style="display:none;">
+    <div class="cv-modal-content">
+
+        <div class="cv-modal-header">
+            <div class="modal-header-left">
+                <div class="modal-avatar" id="modalAvatar">?</div>
+                <div class="modal-title-group">
+                    <h2 id="modalName">Candidate Name</h2>
+                    <span class="modal-filename" id="modalFilename">file.pdf</span>
+                </div>
+            </div>
+            <div class="modal-header-right">
+                <span class="modal-score-badge" id="modalScore">0%</span>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+        </div>
+
+        <div class="cv-modal-body">
+
+            <!-- Score bar -->
+            <div class="modal-section score-summary">
+                <div class="score-bar-container">
+                    <div class="score-bar-fill" id="modalScoreBar"></div>
+                </div>
+                <p class="score-reason" id="modalScoreReason"></p>
+            </div>
+
+            <!-- AI Recruiter Assessment (Gemini — loads after modal opens) -->
+            <div class="modal-section" id="llmSection">
+                <h4 class="section-title">
+                    <iconify-icon icon="ph:sparkle" style="color:#c9a84c;"></iconify-icon>
+                    AI Recruiter Assessment
+                    <span id="llmLoadingBadge" style="
+                        font-size:0.72rem; font-weight:500; color:#c9a84c;
+                        background:rgba(201,168,76,0.1); border:1px solid rgba(201,168,76,0.25);
+                        padding:3px 10px; border-radius:20px; margin-left:8px;">
+                        ⏳ Loading Gemini analysis...
+                    </span>
+                </h4>
+                <div id="modalLlmNarrative"></div>
+                <div id="modalLlmHighlights"></div>
+                <div id="modalLlmConcerns"></div>
+                <div id="modalInterviewFocus"></div>
+            </div>
+
+            <!-- Strengths -->
+            <div class="modal-section" id="strengthSection">
+                <h4 class="section-title strength-title">
+                    <iconify-icon icon="ph:check-circle" style="color:#22c55e;"></iconify-icon>
+                    Why This Candidate Scored Well
+                </h4>
+                <ul class="explanation-list" id="modalStrengths"></ul>
+            </div>
+
+            <!-- Weaknesses -->
+            <div class="modal-section" id="weaknessSection" style="display:none;">
+                <h4 class="section-title weakness-title">
+                    <iconify-icon icon="ph:warning" style="color:#ef4444;"></iconify-icon>
+                    Areas for Improvement / Gaps
+                </h4>
+                <ul class="explanation-list weakness-list" id="modalWeaknesses"></ul>
+            </div>
+
+            <!-- Skills Analysis -->
+            <div class="modal-section" id="skillsSection">
+                <h4 class="section-title">
+                    <iconify-icon icon="ph:code" style="color:#c9a84c;"></iconify-icon>
+                    Skills Analysis
+                </h4>
+                <div class="skills-container" id="modalSkills"></div>
+            </div>
+
+            <!-- Profile Summary -->
+            <div class="modal-section" id="profileSection">
+                <h4 class="section-title">
+                    <iconify-icon icon="ph:user" style="color:#c9a84c;"></iconify-icon>
+                    Profile Summary
+                </h4>
+                <div class="profile-grid" id="modalProfile"></div>
+            </div>
+
+        </div>
+
+        <div class="cv-modal-footer">
+            <button class="btn-close-modal" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ================================================================ -->
+<!--  JAVASCRIPT                                                        -->
+<!-- ================================================================ -->
+<script>
+const candidates = {{ results | tojson | safe }};
+// Store the job description for Gemini API calls
+const JOB_DESC   = {{ (job | tojson) if job else '""' }};
+
+function get(c, flatKey, nestedObj, nestedKey) {
+    const flat = c[flatKey];
+    if (flat !== undefined && flat !== null && flat !== '' &&
+        !(Array.isArray(flat) && flat.length === 0)) return flat;
+    const nested = (c[nestedObj] || {})[nestedKey || flatKey];
+    return (nested !== undefined && nested !== null) ? nested : (Array.isArray(flat) ? [] : '');
+}
+
+function openCandidateModal(index) {
+    const c = candidates[index];
+    if (!c) return;
+
+    const name          = c.name || 'Unknown Candidate';
+    const score         = c.score || 0;
+    const filename      = c.filename || '';
+    const summary       = get(c,'summary','profile','summary');
+    const expYears      = get(c,'experience_years','profile','experience_years');
+    const education     = get(c,'education','profile','education');
+    const prevRoles     = get(c,'previous_roles','profile','job_titles');
+    const companies     = (c.profile || {}).companies || [];
+    const strengths     = get(c,'strengths','explanation','strengths');
+    const weaknesses    = get(c,'weaknesses','explanation','weaknesses');
+    const matched       = get(c,'skills_matched','explanation','skills_matched');
+    const missing       = get(c,'skills_missing','explanation','skills_missing');
+    const extra         = get(c,'skills_extra','explanation','skills_extra');
+
+    // Header
+    document.getElementById('modalName').textContent     = name;
+    document.getElementById('modalFilename').textContent = filename;
+    document.getElementById('modalScore').textContent    = score + '%';
+    document.getElementById('modalAvatar').textContent   = (name[0] || '?').toUpperCase();
+
+    // Score bar
+    const bar = document.getElementById('modalScoreBar');
+    bar.style.width = score + '%';
+    bar.className   = 'score-bar-fill ' +
+        (score >= 90 ? 'score-high' : score >= 70 ? 'score-good' : score >= 50 ? 'score-mid' : 'score-low');
+
+    const reasonEl = document.getElementById('modalScoreReason');
+    reasonEl.textContent =
+        score >= 85 ? 'Exceptional match — aligns very well with job requirements.' :
+        score >= 70 ? 'Strong match — most key requirements are met.' :
+        score >= 55 ? 'Moderate match — some requirements met, gaps exist.' :
+                      'Weak match — significant gaps compared to job requirements.';
+
+    // Reset LLM section to loading state
+    document.getElementById('llmLoadingBadge').style.display = 'inline';
+    document.getElementById('modalLlmNarrative').innerHTML  = '';
+    document.getElementById('modalLlmHighlights').innerHTML = '';
+    document.getElementById('modalLlmConcerns').innerHTML   = '';
+    document.getElementById('modalInterviewFocus').innerHTML= '';
+
+    // Strengths
+    const sl = Array.isArray(strengths) ? strengths : [];
+    document.getElementById('modalStrengths').innerHTML = sl.length
+        ? sl.map(s => `<li>${s}</li>`).join('')
+        : '<li>No specific strengths data available.</li>';
+
+    // Weaknesses
+    const wl = Array.isArray(weaknesses) ? weaknesses : [];
+    const wSec = document.getElementById('weaknessSection');
+    if (wl.length) {
+        document.getElementById('modalWeaknesses').innerHTML = wl.map(w => `<li>${w}</li>`).join('');
+        wSec.style.display = 'block';
+    } else {
+        wSec.style.display = 'none';
+    }
+
+    // Skills
+    const skillsDiv = document.getElementById('modalSkills');
+    let skillsHtml  = '';
+    const mList = Array.isArray(matched) ? matched : [];
+    const miList= Array.isArray(missing) ? missing : [];
+    const eList = Array.isArray(extra)   ? extra   : [];
+
+    if (mList.length)  skillsHtml += `<div class="skill-group"><span class="skill-group-label">Matched Requirements:</span>${mList.map(s=>`<span class="skill-tag skill-matched">${s}</span>`).join('')}</div>`;
+    if (miList.length) skillsHtml += `<div class="skill-group"><span class="skill-group-label">Missing Skills:</span>${miList.map(s=>`<span class="skill-tag skill-missing">${s}</span>`).join('')}</div>`;
+    if (eList.length)  skillsHtml += `<div class="skill-group"><span class="skill-group-label">Bonus Skills:</span>${eList.slice(0,6).map(s=>`<span class="skill-tag skill-extra">${s}</span>`).join('')}</div>`;
+
+    if (!skillsHtml) {
+        const ps = ((c.profile||{}).skills||[]).slice(0,12);
+        if (ps.length) skillsHtml = `<div class="skill-group"><span class="skill-group-label">Skills Found:</span>${ps.map(s=>`<span class="skill-tag skill-matched">${s}</span>`).join('')}</div>`;
+    }
+    skillsDiv.innerHTML = skillsHtml || '<p class="text-muted">No skill data available.</p>';
+
+    // Profile Summary
+    const profileDiv = document.getElementById('modalProfile');
+    let profileHtml  = '';
+    if (summary) profileHtml += `<div class="profile-item" style="grid-column:1/-1;"><span class="profile-label">Professional Summary</span><span class="profile-value">${summary}</span></div>`;
+    const exp = expYears || (c.profile||{}).experience_years;
+    if (exp != null) profileHtml += `<div class="profile-item"><span class="profile-label">Experience</span><span class="profile-value">${exp} year${exp!=1?'s':''}</span></div>`;
+    const roles = Array.isArray(prevRoles)&&prevRoles.length ? prevRoles : ((c.profile||{}).job_titles||[]);
+    if (roles.length) profileHtml += `<div class="profile-item"><span class="profile-label">Most Recent Role</span><span class="profile-value">${roles[0]}</span></div>`;
+    const edu = Array.isArray(education)&&education.length ? education : ((c.profile||{}).education||[]);
+    if (edu.length) profileHtml += `<div class="profile-item"><span class="profile-label">Education</span><span class="profile-value">${edu[0].length>65?edu[0].substring(0,65)+'…':edu[0]}</span></div>`;
+    if (companies.length) profileHtml += `<div class="profile-item"><span class="profile-label">Companies</span><span class="profile-value">${companies.slice(0,3).join(', ')}</span></div>`;
+    profileDiv.innerHTML = profileHtml || '<p class="text-muted">No additional profile data.</p>';
+
+    // Show modal
+    document.getElementById('candidateModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // ── Trigger Gemini AI explanation asynchronously ──
+    fetchGeminiExplanation(c, index);
+}
+
+function fetchGeminiExplanation(c, index) {
+    const profile = c.profile || {};
+    const base_explanation = {
+        strengths:     c.strengths     || [],
+        weaknesses:    c.weaknesses    || [],
+        skills_matched:c.skills_matched|| [],
+        skills_missing:c.skills_missing|| [],
+        skills_extra:  c.skills_extra  || [],
+    };
+
+    fetch('/api/enhance-explanation', {
+        method:  'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            cv_text:         (profile.raw_text_preview || '').substring(0, 2000),
+            job_desc:        JOB_DESC.substring(0, 2000),
+            profile:         profile,
+            score:           c.score || 0,
+            base_explanation: base_explanation,
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        // Hide loading badge
+        document.getElementById('llmLoadingBadge').style.display = 'none';
+
+        if (!data.success) return;
+
+        const narrative  = data.llm_narrative  || '';
+        const highlights = data.llm_highlights || [];
+        const concerns   = data.llm_concerns   || [];
+        const interview  = data.interview_focus|| [];
+
+        if (narrative) {
+            document.getElementById('modalLlmNarrative').innerHTML =
+                `<p class="llm-text">${narrative}</p>`;
+        }
+        if (highlights.length) {
+            document.getElementById('modalLlmHighlights').innerHTML =
+                `<div class="llm-subsection"><h5>Key Highlights</h5><ul>${highlights.map(h=>`<li>${h}</li>`).join('')}</ul></div>`;
+        }
+        if (concerns.length) {
+            document.getElementById('modalLlmConcerns').innerHTML =
+                `<div class="llm-subsection"><h5>Concerns</h5><ul>${concerns.map(c=>`<li>${c}</li>`).join('')}</ul></div>`;
+        }
+        if (interview.length) {
+            document.getElementById('modalInterviewFocus').innerHTML =
+                `<div class="llm-subsection"><h5>Suggested Interview Topics</h5><ul>${interview.map(f=>`<li>${f}</li>`).join('')}</ul></div>`;
+        }
+
+        // Cache result so reopening the same candidate is instant
+        candidates[index].llm_narrative   = narrative;
+        candidates[index].llm_highlights  = highlights;
+        candidates[index].llm_concerns    = concerns;
+        candidates[index].interview_focus = interview;
+    })
+    .catch(() => {
+        document.getElementById('llmLoadingBadge').style.display = 'none';
+    });
+}
+
+function closeModal() {
+    document.getElementById('candidateModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+window.onclick = e => { if (e.target === document.getElementById('candidateModal')) closeModal(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function filterCandidates(range, btn) {
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    document.querySelectorAll('.candidate-row').forEach(row => {
+        const s = parseInt(row.dataset.score);
+        const show =
+            range==='all'      ? true :
+            range==='90-100'   ? s>=90 :
+            range==='70-90'    ? s>=70&&s<90 :
+            range==='50-70'    ? s>=50&&s<70 :
+            range==='below-50' ? s<50 : true;
+        row.style.display = show ? '' : 'none';
+    });
+}
+</script>
+
+<style>
+.llm-text {
+    color:#cbd5e1; font-size:0.95rem; line-height:1.7; font-style:italic;
+    border-left:3px solid rgba(201,168,76,0.4); padding-left:16px; margin:0 0 16px;
+}
+.llm-subsection { margin-top:14px; }
+.llm-subsection h5 {
+    color:#c9a84c; font-size:0.8rem; text-transform:uppercase;
+    letter-spacing:1px; margin-bottom:8px; font-weight:700;
+}
+.llm-subsection ul { list-style:none; padding:0; margin:0; }
+.llm-subsection li {
+    color:#a0aec0; padding:6px 0 6px 20px; position:relative;
+    font-size:0.9rem; line-height:1.5;
+}
+.llm-subsection li::before {
+    content:''; position:absolute; left:0; top:13px;
+    width:6px; height:6px; border-radius:50%; background:#c9a84c;
+}
+</style>
+
+{% endblock %}

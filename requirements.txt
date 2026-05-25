@@ -1,0 +1,36 @@
+# ==============================
+# RankCV — Python Dependencies
+# ==============================
+
+# Web framework
+Flask
+Flask-SQLAlchemy
+
+# Database driver (MySQL)
+PyMySQL
+greenlet
+
+# Security / password hashing
+Werkzeug
+
+# PDF extraction (primary)
+pdfplumber
+
+# PDF extraction (fallback)
+PyPDF2
+
+# ── AI / Scoring engines ──
+
+# Semantic scoring — PRIMARY (understands meaning, not just keywords)
+sentence-transformers
+
+# Gemini AI — on-demand explanations when user clicks a candidate
+google-generativeai
+
+# TF-IDF fallback scoring (used only if sentence-transformers fails)
+scikit-learn
+numpy
+
+# Required by sentence-transformers
+torch
+transformers
