@@ -1232,14 +1232,16 @@ def too_large(e):
 # STARTUP
 # =============================================================================
 if __name__ == '__main__':
+    import os
     with app.app_context():
         db.create_all()
         print("\n" + "="*55)
-        print("  RankCV — Ready")
-        print("="*55)
-        print(f"  Scoring  : {'Semantic embeddings (sentence-transformers)' if HAS_EMBEDDINGS else 'TF-IDF fallback'}")
-        print(f"  Gemini   : {'ON — AI explanations on-demand' if GEMINI_AVAILABLE else 'OFF — rule-based fallback'}")
-        print(f"  Database : MySQL (rankcv_db)")
-        print(f"  Visit    : http://localhost:5000")
-        print("="*55 + "\n")
-    app.run(debug=True, host='0.0.0.0')
+        print(" RankCv - Ready")
+        print("-"*55)
+        print(f" Scoring  : {'Semantic embeddings (sentence-transformers)' if HAS_EMBEDDINGS else 'TF-IDF fallback'}")
+        print(f" Gemini   : {'ON - AI explanations on-demand' if GEMINI_AVAILABLE else 'OFF - rule-based fallback'}")
+        print(f" Database : MySQL( rankcv_db )")
+        print("-"*55)
+    
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)
